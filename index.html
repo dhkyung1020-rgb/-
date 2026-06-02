@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>수행평가 점수 확인</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #F7F6F2; --surface: #FFFFFF; --surface2: #F0EEE8;
+    --border: #E2DDD5; --text: #1A1916; --text2: #6B6860; --text3: #9B9890;
+    --accent: #2D5A8E; --accent-light: #E8EFF7; --accent2: #1A3F63;
+    --success: #2D7A4F; --success-light: #E8F4EE;
+    --warn: #8B5E00; --warn-light: #FFF3DC;
+    --danger: #A32D2D; --danger-light: #FCEBEB;
+  }
+  body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+  .header-left { display: flex; align-items: center; gap: 1rem; }
+  .header-icon { width: 38px; height: 38px; background: var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+  .header-icon svg { width: 20px; height: 20px; stroke: white; fill: none; stroke-width: 2; stroke-linecap: round; }
+  header h1 { font-size: 1.05rem; font-weight: 700; letter-spacing: -0.02em; }
+  header p { font-size: 0.76rem; color: var(--text2); margin-top: 2px; }
+
+  .sync-status { display: flex; align-items: center; gap: 7px; font-size: 0.75rem; padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--bg); color: var(--text3); white-space: nowrap; }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
+  .sync-status.connected { color: var(--success); border-color: #B8DEC8; background: var(--success-light); }
+  .sync-status.connected .sync-dot { background: var(--success); }
+  .sync-status.error { color: var(--danger); border-color: #F7C1C1; background: var(--danger-light); }
+  .sync-status.error .sync-dot { background: var(--danger); }
+  .sync-status.loading .sync-dot { background: var(--warn); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .main { display: flex; flex: 1; }
+  .sidebar { width: 268px; min-width: 268px; background: var(--surface); border-right: 1px solid var(--border); padding: 1.25rem 1rem; display: flex; flex-direction: column; gap: 1.1rem; height: calc(100vh - 62px); overflow-y: auto; position: sticky; top: 0; }
+  .section-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text3); text-transform: uppercase; margin-bottom: 0.4rem; }
+
+  .sheet-panel { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .sheet-panel label { font-size: 0.73rem; color: var(--text2); font-weight: 500; }
+  .sheet-input-wrap { position: relative; }
+  .sheet-input-wrap svg { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; stroke: var(--text3); fill: none; stroke-width: 2; pointer-events: none; }
+  .sheet-input { width: 100%; padding: 8px 10px 8px 29px; border: 1px solid var(--border); border-radius: 7px; font-family: 'Noto Sans KR', sans-serif; font-size: 0.75rem; background: var(--surface); color: var(--text); outline: none; transition: border-color 0.2s; }
+  .sheet-input:focus { border-color: var(--accent); }
+  .saved-badge { display: none; align-items: center; gap: 5px; font-size: 0.7rem; color: var(--success); background: var(--success-light); border: 1px solid #B8DEC8; border-radius: 6px; padding: 4px 9px; }
+  .saved-badge svg { width: 12px; height: 12px; stroke: var(--success); fill: none; stroke-width: 2.5; flex-shrink: 0; }
+  .saved-badge.show { display: flex; }
+  .btn-row { display: flex; gap: 6px; }
+  .load-btn { flex: 1; padding: 8px; background: var(--accent); color: white; border: none; border-radius: 7px; font-family: 'Noto Sans KR', sans-serif; font-size: 0.76rem; font-weight: 600; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 5px; }
+  .load-btn:hover { background: var(--accent2); }
+  .load-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .load-btn svg { width: 13px; height: 13px; stroke: white; fill: none; stroke-width: 2.5; }
+  .clear-btn { padding: 8px 10px; background: none; border: 1px solid var(--border); border-radius: 7px; font-family: 'Noto Sans KR', sans-serif; font-size: 0.72rem; color: var(--text3); cursor: pointer; transition: all 0.15s; white-space: nowrap; display: none; }
+  .clear-btn:hover { border-color: var(--danger); color: var(--danger); }
+  .refresh-row { display: none; align-items: center; gap: 6px; }
+  .refresh-row.show { display: flex; }
+  .refresh-btn { flex: 1; padding: 6px; background: none; color: var(--text2); border: 1px solid var(--border); border-radius: 7px; font-family: 'Noto Sans KR', sans-serif; font-size: 0.72rem; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 5px; }
+  .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .refresh-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .last-sync { font-size: 0.67rem; color: var(--text3); flex-shrink: 0; }
+
+  /* 양식 다운로드 버튼 */
+  .download-btn { display: flex; align-items: center; gap: 7px; width: 100%; padding: 9px 11px; background: var(--success-light); border: 1px solid #B8DEC8; border-radius: 8px; color: var(--success); font-family: 'Noto Sans KR', sans-serif; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.15s; text-decoration: none; }
+  .download-btn:hover { background: #D4EDE0; border-color: var(--success); }
+  .download-btn svg { width: 15px; height: 15px; stroke: var(--success); fill: none; stroke-width: 2; flex-shrink: 0; }
+  .download-btn span { flex: 1; }
+  .download-btn .dl-sub { font-size: 0.65rem; font-weight: 400; color: #4A9A6A; display: block; margin-top: 1px; }
+
+  /* 안내 아코디언 */
+  .guide-accordion { border: 1px solid #F0D080; border-radius: 8px; overflow: hidden; }
+  .guide-head { background: var(--warn-light); padding: 9px 11px; font-size: 0.73rem; font-weight: 600; color: var(--warn); cursor: pointer; display: flex; align-items: center; justify-content: space-between; user-select: none; }
+  .guide-head svg { width: 14px; height: 14px; stroke: var(--warn); fill: none; stroke-width: 2.5; transition: transform 0.2s; }
+  .guide-head.open svg { transform: rotate(180deg); }
+  .guide-body { background: var(--warn-light); padding: 0 11px; font-size: 0.71rem; color: var(--warn); line-height: 1.7; max-height: 0; overflow: hidden; transition: max-height 0.25s ease, padding 0.2s; }
+  .guide-body.open { max-height: 500px; padding: 9px 11px 10px; border-top: 1px solid #F0D080; }
+  .guide-step { display: flex; gap: 7px; margin-bottom: 5px; }
+  .guide-step-num { width: 16px; height: 16px; background: var(--warn); color: white; border-radius: 50%; font-size: 0.6rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+  .guide-code { display: inline-block; background: rgba(139,94,0,0.12); padding: 1px 5px; border-radius: 3px; font-size: 0.67rem; font-family: monospace; word-break: break-all; }
+
+  /* 학년 탭 */
+  .grade-tabs { display: flex; gap: 4px; }
+  .grade-tab { flex: 1; padding: 7px 4px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); font-size: 0.75rem; font-family: 'Noto Sans KR', sans-serif; color: var(--text2); cursor: pointer; transition: all 0.15s; text-align: center; font-weight: 500; }
+  .grade-tab:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+  .grade-tab.active { background: var(--accent2); color: white; border-color: var(--accent2); font-weight: 700; }
+  .grade-tab.has-data { border-color: #B8DEC8; color: var(--success); }
+  .grade-tab.has-data.active { background: var(--accent2); color: white; border-color: var(--accent2); }
+
+  .class-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+  .class-btn { padding: 6px 4px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); font-size: 0.72rem; font-family: 'Noto Sans KR', sans-serif; color: var(--text2); cursor: pointer; transition: all 0.15s; text-align: center; }
+  .class-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+  .class-btn.active { background: var(--accent); color: white; border-color: var(--accent); font-weight: 500; }
+  .class-btn.has-data { border-color: #B8DEC8; color: var(--success); background: var(--success-light); }
+  .class-btn.has-data.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+  .search-wrap { position: relative; }
+  .search-wrap input { width: 100%; padding: 9px 12px 9px 34px; border: 1px solid var(--border); border-radius: 8px; font-family: 'Noto Sans KR', sans-serif; font-size: 0.83rem; background: var(--bg); color: var(--text); outline: none; transition: border-color 0.2s; }
+  .search-wrap input:focus { border-color: var(--accent); background: white; }
+  .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; stroke: var(--text3); fill: none; stroke-width: 2; pointer-events: none; }
+
+  .content { flex: 1; padding: 2rem; overflow-y: auto; max-height: calc(100vh - 62px); }
+  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 70%; gap: 1rem; color: var(--text3); text-align: center; }
+  .empty-state svg { width: 52px; height: 52px; stroke: var(--border); fill: none; stroke-width: 1.2; }
+  .empty-state h2 { font-size: 1rem; font-weight: 500; color: var(--text2); }
+  .empty-state p { font-size: 0.82rem; line-height: 1.7; }
+  .empty-hint { font-size: 0.75rem; color: var(--text3); background: var(--surface2); padding: 8px 14px; border-radius: 8px; line-height: 1.6; }
+
+  .class-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.1rem; }
+  .class-title { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.02em; }
+  .class-count { font-size: 0.76rem; color: var(--text3); background: var(--surface2); padding: 3px 10px; border-radius: 999px; }
+
+  .student-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 7px; max-height: 420px; overflow-y: auto; padding: 0.5rem; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+  .student-chip { display: flex; align-items: center; gap: 8px; padding: 7px 11px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); cursor: pointer; transition: all 0.15s; font-size: 0.78rem; color: var(--text); }
+  .student-chip:hover { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
+  .num-badge { font-size: 0.67rem; background: var(--surface2); color: var(--text3); padding: 1px 6px; border-radius: 4px; font-weight: 600; flex-shrink: 0; }
+
+  .student-nav { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; margin-bottom: 1.25rem; }
+  .back-btn { display: inline-flex; align-items: center; gap: 4px; font-size: 0.76rem; color: var(--text2); cursor: pointer; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); transition: all 0.15s; font-family: 'Noto Sans KR', sans-serif; white-space: nowrap; }
+  .back-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .back-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2.5; }
+  .nav-center { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .nav-arrow { width: 34px; height: 34px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .nav-arrow:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-light); }
+  .nav-arrow:disabled { opacity: 0.3; cursor: not-allowed; }
+  .nav-arrow svg { width: 16px; height: 16px; stroke: var(--text2); fill: none; stroke-width: 2.5; }
+  .nav-arrow:hover:not(:disabled) svg { stroke: var(--accent); }
+  .nav-info { font-size: 0.8rem; font-weight: 600; color: var(--text); min-width: 80px; text-align: center; }
+  .nav-info span { font-size: 0.72rem; font-weight: 400; color: var(--text3); }
+
+  .result-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.25rem; gap: 1rem; flex-wrap: wrap; }
+  .student-meta h2 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.03em; }
+  .student-meta .sub { font-size: 0.8rem; color: var(--text2); margin-top: 3px; }
+  .total-pill { background: var(--accent); color: white; padding: 6px 18px; border-radius: 999px; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .total-pill span { opacity: 0.75; font-weight: 400; font-size: 0.74rem; }
+
+  .domain-section { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin-bottom: 1rem; }
+  .domain-section-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--accent2); }
+  .domain-section-title { font-size: 0.88rem; font-weight: 700; color: white; }
+  .domain-section-total { font-size: 0.88rem; font-weight: 700; color: white; display: flex; align-items: baseline; gap: 5px; }
+  .domain-section-total .max { font-size: 0.7rem; opacity: 0.7; font-weight: 400; }
+  .domain-section-bar { height: 3px; background: rgba(255,255,255,0.2); }
+  .domain-section-bar-fill { height: 100%; background: rgba(255,255,255,0.7); }
+  .sub-domains { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  .sub-domain-item { padding: 12px 16px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .sub-domain-item:last-child { border-right: none; }
+  .sub-domain-name { font-size: 0.68rem; color: var(--text3); font-weight: 600; margin-bottom: 5px; }
+  .sub-domain-score { font-size: 1.4rem; font-weight: 700; color: var(--accent2); letter-spacing: -0.03em; }
+  .sub-domain-max { font-size: 0.68rem; color: var(--text3); margin-top: 1px; }
+  .sub-domain-bar { height: 2px; background: var(--border); border-radius: 1px; margin-top: 8px; }
+  .sub-domain-bar-fill { height: 100%; border-radius: 1px; background: var(--accent); }
+
+  .detail-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 1.25rem; }
+  .detail-table-title { padding: 0.75rem 1.25rem; font-size: 0.75rem; font-weight: 600; color: var(--text2); letter-spacing: 0.04em; border-bottom: 1px solid var(--border); background: var(--bg); }
+  table { width: 100%; border-collapse: collapse; }
+  th { padding: 8px 14px; font-size: 0.7rem; font-weight: 600; color: var(--text3); letter-spacing: 0.05em; text-align: left; border-bottom: 1px solid var(--border); background: var(--bg); }
+  th.num { text-align: right; }
+  td { padding: 9px 14px; font-size: 0.82rem; color: var(--text); border-bottom: 1px solid var(--border); }
+  td.num { text-align: right; font-weight: 500; font-variant-numeric: tabular-nums; }
+  td.indent { padding-left: 26px; color: var(--text2); font-size: 0.79rem; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg); }
+  .domain-row td { font-weight: 700; color: var(--accent2); background: var(--accent-light) !important; }
+  .total-row td { font-weight: 700; color: white; background: var(--accent2) !important; }
+  .rank-badge { display: inline-flex; align-items: center; font-size: 0.68rem; padding: 2px 7px; border-radius: 4px; font-weight: 600; }
+  .rank-high { background: var(--success-light); color: var(--success); }
+  .rank-mid { background: var(--warn-light); color: var(--warn); }
+  .rank-low { background: var(--danger-light); color: var(--danger); }
+  .no-data { text-align: center; padding: 2.5rem; color: var(--text3); font-size: 0.83rem; }
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="header-icon">
+      <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/><path d="M9 12h6M9 16h4"/></svg>
+    </div>
+    <div>
+      <h1>수행평가 점수 확인</h1>
+      <p>구글 시트 연동 · 학년·반별 영역별 점수 조회</p>
+    </div>
+  </div>
+  <div class="sync-status" id="syncStatus">
+    <div class="sync-dot"></div>
+    <span id="syncText">연결 안됨</span>
+  </div>
+</header>
+
+<div class="main">
+  <aside class="sidebar">
+
+    <!-- 구글 시트 연동 -->
+    <div>
+      <div class="section-label">구글 시트 연동</div>
+      <div class="sheet-panel">
+        <label>구글 시트 URL</label>
+        <div class="sheet-input-wrap">
+          <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          <input class="sheet-input" type="text" id="sheetUrlInput" placeholder="구글 시트 URL 붙여넣기">
+        </div>
+        <div class="saved-badge" id="savedBadge">
+          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          이 브라우저에 URL이 저장되어 있어요
+        </div>
+        <div class="btn-row">
+          <button class="load-btn" id="loadBtn" onclick="loadSheetData()">
+            <svg viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+            불러오기
+          </button>
+          <button class="clear-btn" id="clearBtn" onclick="clearSavedUrl()">URL 초기화</button>
+        </div>
+        <div class="refresh-row" id="refreshRow">
+          <button class="refresh-btn" onclick="refreshData()">
+            <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            새로고침
+          </button>
+          <span class="last-sync" id="lastSync"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 양식 다운로드 + 안내 -->
+    <div>
+      <div class="section-label">양식 및 안내</div>
+      <button class="download-btn" onclick="downloadTemplate()">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span>
+          구글 시트 양식 다운로드
+          <span class="dl-sub">예시 데이터 포함 · XLSX</span>
+        </span>
+      </button>
+
+      <div style="height:6px"></div>
+
+      <div class="guide-accordion">
+        <div class="guide-head" id="guideHead" onclick="toggleGuide()">
+          📋 구글 시트 설정 방법
+          <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="guide-body" id="guideBody">
+          <div class="guide-step">
+            <div class="guide-step-num">1</div>
+            <div class="guide-step-text">양식 다운로드 후 구글 시트에 가져오기<br><span class="guide-code">파일 → 가져오기 → 업로드</span></div>
+          </div>
+          <div class="guide-step">
+            <div class="guide-step-num">2</div>
+            <div class="guide-step-text">시트 탭 이름: <span class="guide-code">1학년1반</span> <span class="guide-code">2학년3반</span> 형식<br>또는 1행에 <span class="guide-code">1학년 1반</span> 기재</div>
+          </div>
+          <div class="guide-step">
+            <div class="guide-step-num">3</div>
+            <div class="guide-step-text">
+              <b>2행</b>: 번호 | 이름 | <span class="guide-code">대영역명</span>(병합) | 총합<br>
+              <b>3행</b>: (빈칸) | (빈칸) | <span class="guide-code">세부영역</span> | <span class="guide-code">합계</span> | ...<br>
+              <b>4행~</b>: 학생 데이터
+            </div>
+          </div>
+          <div class="guide-step">
+            <div class="guide-step-num">4</div>
+            <div class="guide-step-text"><b>파일 → 공유 → 웹에 게시</b><br>CSV 형식으로 각 시트 게시 후 URL 입력</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 학년 선택 -->
+    <div>
+      <div class="section-label">학년 선택</div>
+      <div class="grade-tabs" id="gradeTabs">
+        <button class="grade-tab active" data-grade="1" onclick="selectGrade(1)">1학년</button>
+        <button class="grade-tab" data-grade="2" onclick="selectGrade(2)">2학년</button>
+        <button class="grade-tab" data-grade="3" onclick="selectGrade(3)">3학년</button>
+      </div>
+    </div>
+
+    <!-- 반 선택 -->
+    <div>
+      <div class="section-label">반 선택</div>
+      <div class="class-grid" id="classGrid"></div>
+    </div>
+
+    <!-- 검색 -->
+    <div>
+      <div class="section-label">번호 / 이름 검색</div>
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="searchInput" placeholder="번호 또는 이름 입력..." oninput="handleSearch()">
+      </div>
+    </div>
+
+  </aside>
+
+  <main class="content" id="mainContent">
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      <h2>구글 시트를 연결해주세요</h2>
+      <p>왼쪽에 URL을 입력하고 불러오기를 누르면<br>자동 저장 후 다음부터 바로 연결돼요.</p>
+      <div class="empty-hint">💡 위의 양식을 먼저 다운로드해서<br>구글 시트에 가져온 뒤 URL을 입력해주세요</div>
+    </div>
+  </main>
+</div>
+
+<script>
+const STORAGE_KEY = 'suhaeng_sheet_url';
+// allData 키: "학년-반" 예) "1-3" = 1학년 3반
+const allData = {};
+let selectedGrade = 1;
+let selectedClass = null;
+let currentStudentNum = null;
+let sheetId = null, sheetMeta = [];
+
+const XLSX_B64 = "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";
+
+function els(id) { return document.getElementById(id); }
+
+// ── 반 버튼 생성 (1~14반) ─────────────────────────
+function buildClassGrid() {
+  const grid = els('classGrid');
+  grid.innerHTML = '';
+  for (let i = 1; i <= 14; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'class-btn';
+    btn.textContent = i + '반';
+    btn.dataset.cls = i;
+    btn.onclick = () => selectClass(i);
+    grid.appendChild(btn);
+  }
+}
+buildClassGrid();
+
+// ── 학년 선택 ─────────────────────────────────────
+function selectGrade(g) {
+  selectedGrade = g;
+  selectedClass = null; currentStudentNum = null;
+  document.querySelectorAll('.grade-tab').forEach(t =>
+    t.classList.toggle('active', parseInt(t.dataset.grade) === g));
+  els('searchInput').value = '';
+  updateClassButtons();
+  els('mainContent').innerHTML = `<div class="empty-state">
+    <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/><path d="M9 12h6M9 16h4"/></svg>
+    <h2>${g}학년 반을 선택해주세요</h2>
+    <p>왼쪽에서 반을 선택하면 학생 목록이 나타납니다.</p>
+  </div>`;
+}
+
+function updateClassButtons() {
+  document.querySelectorAll('.class-btn').forEach(btn => {
+    const key = selectedGrade + '-' + btn.dataset.cls;
+    btn.classList.toggle('has-data', !!allData[key]);
+    btn.classList.remove('active');
+    if (selectedClass && parseInt(btn.dataset.cls) === selectedClass)
+      btn.classList.add('active');
+  });
+  // 학년 탭에 데이터 있으면 표시
+  document.querySelectorAll('.grade-tab').forEach(t => {
+    const g = parseInt(t.dataset.grade);
+    const hasAny = Object.keys(allData).some(k => k.startsWith(g + '-'));
+    t.classList.toggle('has-data', hasAny);
+  });
+}
+
+// ── localStorage ──────────────────────────────────
+function saveUrl(url)   { try { localStorage.setItem(STORAGE_KEY, url); } catch(e){} }
+function loadSavedUrl() { try { return localStorage.getItem(STORAGE_KEY)||''; } catch(e){ return ''; } }
+
+function clearSavedUrl() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
+  els('sheetUrlInput').value = '';
+  els('savedBadge').classList.remove('show');
+  els('clearBtn').style.display = 'none';
+  els('refreshRow').classList.remove('show');
+  setSyncStatus('','연결 안됨');
+  Object.keys(allData).forEach(k => delete allData[k]);
+  selectedClass = null; currentStudentNum = null;
+  updateClassButtons();
+  els('mainContent').innerHTML = `<div class="empty-state">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+    <h2>구글 시트를 연결해주세요</h2>
+    <p>왼쪽에 URL을 입력하고 불러오기를 누르면<br>자동 저장 후 다음부터 바로 연결돼요.</p>
+    <div class="empty-hint">💡 위의 양식을 먼저 다운로드해서<br>구글 시트에 가져온 뒤 URL을 입력해주세요</div>
+  </div>`;
+}
+
+function setSyncStatus(state, text) {
+  els('syncStatus').className = 'sync-status ' + state;
+  els('syncText').textContent = text;
+}
+
+// ── XLSX 다운로드 ─────────────────────────────────
+function downloadTemplate() {
+  const bin = atob(XLSX_B64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  const blob = new Blob([arr], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '수행평가_구글시트_양식.xlsx';
+  a.click();
+}
+
+// ── URL / 시트 처리 ───────────────────────────────
+function extractSheetId(input) {
+  input = input.trim();
+  const m = input.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  if (m) return m[1];
+  if (/^[a-zA-Z0-9_-]{30,}$/.test(input)) return input;
+  return null;
+}
+function makeCsvUrl(id, gid) {
+  return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+}
+async function fetchSheetList(id) {
+  const res = await fetch(`https://docs.google.com/spreadsheets/d/${id}/pubhtml`);
+  if (!res.ok) throw new Error('"웹에 게시" 설정을 확인해주세요.');
+  const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+  const sheets = [];
+  doc.querySelectorAll('#sheet-menu li').forEach(tab => {
+    const a = tab.querySelector('a');
+    if (a) {
+      const gidM = (a.getAttribute('href')||'').match(/gid=(\d+)/);
+      sheets.push({ name: a.textContent.trim(), gid: gidM ? gidM[1] : '0' });
+    }
+  });
+  if (!sheets.length) sheets.push({ name:'Sheet1', gid:'0' });
+  return sheets;
+}
+
+async function loadSheetData() {
+  const raw = els('sheetUrlInput').value.trim();
+  if (!raw) { alert('구글 시트 URL을 입력해주세요.'); return; }
+  const id = extractSheetId(raw);
+  if (!id) { alert('올바른 구글 시트 URL을 입력해주세요.'); return; }
+  sheetId = id;
+  els('loadBtn').disabled = true;
+  setSyncStatus('loading','연결 중...');
+  try {
+    sheetMeta = await fetchSheetList(id);
+    await fetchAllSheets(id, sheetMeta);
+    updateClassButtons();
+    saveUrl(raw);
+    els('savedBadge').classList.add('show');
+    els('clearBtn').style.display = 'block';
+    els('refreshRow').classList.add('show');
+    setSyncStatus('connected','연결됨');
+    updateLastSync();
+    els('loadBtn').disabled = false;
+    selectGrade(selectedGrade);
+  } catch(e) {
+    setSyncStatus('error','연결 실패');
+    els('loadBtn').disabled = false;
+    alert('불러오기 실패\n\n' + e.message);
+  }
+}
+
+async function fetchAllSheets(id, sheets) {
+  Object.keys(allData).forEach(k => delete allData[k]);
+  for (const sheet of sheets) {
+    try {
+      const res = await fetch(makeCsvUrl(id, sheet.gid));
+      if (!res.ok) continue;
+      parseSheet(parseCSV(await res.text()), sheet.name);
+    } catch(e) {}
+  }
+}
+
+async function refreshData() {
+  if (!sheetId || !sheetMeta.length) return;
+  setSyncStatus('loading','새로고침 중...');
+  try {
+    await fetchAllSheets(sheetId, sheetMeta);
+    updateClassButtons();
+    setSyncStatus('connected','연결됨');
+    updateLastSync();
+    if (selectedClass && allData[selectedGrade+'-'+selectedClass])
+      currentStudentNum ? renderStudentView(selectedClass, currentStudentNum) : renderClassView(selectedClass);
+  } catch(e) { setSyncStatus('error','새로고침 실패'); }
+}
+
+function updateLastSync() {
+  const n = new Date();
+  els('lastSync').textContent = `${n.getHours().toString().padStart(2,'0')}:${n.getMinutes().toString().padStart(2,'0')} 업데이트`;
+}
+
+// ── CSV 파싱 ─────────────────────────────────────
+function parseCSV(text) {
+  const rows = [];
+  for (const line of text.split('\n')) {
+    if (!line.trim()) continue;
+    const cols = []; let cur='', inQ=false;
+    for (let i=0; i<line.length; i++) {
+      const ch = line[i];
+      if (ch==='"') inQ=!inQ;
+      else if (ch===','&&!inQ) { cols.push(cur.trim()); cur=''; }
+      else cur+=ch;
+    }
+    cols.push(cur.trim());
+    rows.push(cols);
+  }
+  return rows;
+}
+
+// ── 학년/반 감지 ──────────────────────────────────
+// 시트 이름이나 1행에서 "N학년 M반" 또는 "NM반" 형태 인식
+function detectGradeClass(raw, sheetName) {
+  const candidates = [sheetName];
+  if (raw.length > 0) raw[0].forEach(c => candidates.push(String(c)));
+
+  for (const s of candidates) {
+    const clean = s.replace(/\s/g,'');
+    // "1학년2반", "1학년 2반"
+    let m = clean.match(/([1-3])학년(\d+)반?/);
+    if (m) return { grade: parseInt(m[1]), cls: parseInt(m[2]) };
+    // "1-2" 형태
+    m = clean.match(/^([1-3])-(\d+)$/);
+    if (m) return { grade: parseInt(m[1]), cls: parseInt(m[2]) };
+    // 반만 있으면 학년 1 default
+    m = clean.match(/^(\d+)반?$/);
+    if (m) { const n=parseInt(m[1]); if(n>=1&&n<=14) return { grade:1, cls:n }; }
+  }
+  return null;
+}
+
+// ── 시트 파싱 ─────────────────────────────────────
+function parseSheet(raw, sheetName) {
+  if (raw.length < 4) return;
+  const info = detectGradeClass(raw, sheetName);
+  if (!info) return;
+  const { grade, cls } = info;
+
+  const domainRow = raw[1].map(h => String(h).trim());
+  const subRow    = raw[2].map(h => String(h).trim());
+
+  const nIdx  = [subRow, domainRow].reduce((found, row) =>
+    found >= 0 ? found : row.findIndex(h => ['번호','번','학번','no'].includes(h.toLowerCase())), -1);
+  const nmIdx = [subRow, domainRow].reduce((found, row) =>
+    found >= 0 ? found : row.findIndex(h => ['이름','성명'].includes(h)), -1);
+  const totalIdx = [subRow, domainRow].reduce((found, row) =>
+    found >= 0 ? found : row.findIndex(h => ['총합','총점','합계총점'].includes(h)), -1);
+
+  const domains = [];
+  let currentDomain = null;
+  for (let i=0; i<domainRow.length; i++) {
+    if (i===nIdx || i===nmIdx || i===totalIdx) continue;
+    const dName = domainRow[i], sName = subRow[i];
+    if (dName !== '') { currentDomain = { name: dName, cols: [] }; domains.push(currentDomain); }
+    if (currentDomain && sName !== '') {
+      const isTotal = sName.includes('합계') || sName.endsWith('합');
+      currentDomain.cols.push({ subName: sName, idx: i, isTotal });
+    }
+  }
+
+  const students = [];
+  for (let r=3; r<raw.length; r++) {
+    const row = raw[r];
+    if (row.every(c=>c===''||c==null)) continue;
+    const num  = nIdx  >= 0 ? String(row[nIdx] ||'').trim() : String(r-2);
+    const name = nmIdx >= 0 ? String(row[nmIdx]||'').trim() : '';
+    if (!num && !name) continue;
+    const domainScores = domains.map(d => {
+      const cols = d.cols.map(col => {
+        const v = row[col.idx]!==undefined ? row[col.idx] : '';
+        const n = parseFloat(v);
+        return { ...col, value: isNaN(n) ? (v||'-') : n };
+      });
+      const totalCol = cols.find(c=>c.isTotal);
+      const total = totalCol ? (typeof totalCol.value==='number' ? totalCol.value : null) : null;
+      return { name: d.name, cols, total };
+    });
+    const gv = totalIdx>=0 ? parseFloat(row[totalIdx]) : null;
+    students.push({ num, name, domainScores, grandTotal: isNaN(gv)?null:gv });
+  }
+  if (students.length > 0) allData[grade+'-'+cls] = { students, domains, grade, cls };
+}
+
+// ── 반 선택 ──────────────────────────────────────
+function selectClass(c) {
+  selectedClass = c; currentStudentNum = null;
+  document.querySelectorAll('.class-btn').forEach(btn =>
+    btn.classList.toggle('active', parseInt(btn.dataset.cls)===c));
+  els('searchInput').value = '';
+  renderClassView(c);
+}
+
+// ── 목록 뷰 ──────────────────────────────────────
+function renderClassView(c) {
+  currentStudentNum = null;
+  const key = selectedGrade+'-'+c;
+  const data = allData[key];
+  if (!data) {
+    els('mainContent').innerHTML = `<div class="no-data"><p>${selectedGrade}학년 ${c}반 데이터가 없습니다.<br>구글 시트를 확인해주세요.</p></div>`;
+    return;
+  }
+  const q = els('searchInput').value.trim().toLowerCase();
+  const filtered = q ? data.students.filter(s=>s.num.toLowerCase().includes(q)||s.name.toLowerCase().includes(q)) : data.students;
+  els('mainContent').innerHTML = `
+    <div class="class-header">
+      <div class="class-title">${selectedGrade}학년 ${c}반</div>
+      <div class="class-count">총 ${data.students.length}명${q?` · 검색결과 ${filtered.length}명`:''}</div>
+    </div>
+    <div class="student-list">
+      ${filtered.length===0?`<div class="no-data" style="grid-column:1/-1">검색 결과가 없습니다.</div>`:
+        filtered.map(s=>`
+          <div class="student-chip" onclick="renderStudentView(${c},'${escHtml(s.num)}')">
+            <span class="num-badge">${escHtml(s.num)}</span>
+            <span>${escHtml(s.name)||'(이름없음)'}</span>
+          </div>`).join('')}
+    </div>`;
+}
+
+// ── 학생 뷰 ──────────────────────────────────────
+function renderStudentView(c, num) {
+  currentStudentNum = num;
+  const key = selectedGrade+'-'+c;
+  const data = allData[key]; if(!data) return;
+  const idx = data.students.findIndex(st=>st.num===num); if(idx<0) return;
+  const s = data.students[idx];
+  const total = data.students.length;
+  const hasPrev = idx>0, hasNext = idx<total-1;
+
+  const domainCardsHtml = s.domainScores.map(d => {
+    const maxTotal = Math.max(...data.students.map(st=>{
+      const dd=st.domainScores.find(x=>x.name===d.name);
+      return dd&&typeof dd.total==='number'?dd.total:0;
+    }));
+    const pct = d.total!=null&&maxTotal>0 ? Math.round((d.total/maxTotal)*100) : 0;
+    const subHtml = d.cols.filter(c=>!c.isTotal).map(col=>{
+      const v=col.value, isNum=typeof v==='number';
+      const colMax = isNum ? Math.max(...data.students.map(st=>{
+        const dd=st.domainScores.find(x=>x.name===d.name);
+        if(!dd) return 0;
+        const cc=dd.cols.find(x=>x.subName===col.subName);
+        return cc&&typeof cc.value==='number'?cc.value:0;
+      })) : 0;
+      const colPct = isNum&&colMax>0 ? Math.round((v/colMax)*100) : 0;
+      return `<div class="sub-domain-item">
+        <div class="sub-domain-name">${escHtml(col.subName)}</div>
+        <div class="sub-domain-score">${isNum?v:(v||'-')}</div>
+        ${isNum?`<div class="sub-domain-max">최고 ${colMax}점</div><div class="sub-domain-bar"><div class="sub-domain-bar-fill" style="width:${colPct}%"></div></div>`:''}
+      </div>`;
+    }).join('');
+    return `<div class="domain-section">
+      <div class="domain-section-header">
+        <div class="domain-section-title">${escHtml(d.name)}</div>
+        <div class="domain-section-total">${d.total!=null?d.total:'-'}<span class="max">/ 합계</span></div>
+      </div>
+      <div class="domain-section-bar"><div class="domain-section-bar-fill" style="width:${pct}%"></div></div>
+      <div class="sub-domains">${subHtml}</div>
+    </div>`;
+  }).join('');
+
+  const tableHtml = s.domainScores.map(d => {
+    const subRows = d.cols.filter(c=>!c.isTotal).map(col=>{
+      const v=col.value, isNum=typeof v==='number';
+      return `<tr><td class="indent">${escHtml(col.subName)}</td><td class="num">${isNum?v:(v||'-')}</td><td></td></tr>`;
+    }).join('');
+    const cls2 = data.students.filter(st=>{ const dd=st.domainScores.find(x=>x.name===d.name); return dd&&typeof dd.total==='number'; });
+    const rank = [...cls2].sort((a,b)=>{ const da=a.domainScores.find(x=>x.name===d.name),db=b.domainScores.find(x=>x.name===d.name); return (db.total||0)-(da.total||0); }).findIndex(st=>st.num===s.num)+1;
+    const rp = cls2.length>0?rank/cls2.length:0;
+    const rb = d.total!=null ? (rp<=0.3?`<span class="rank-badge rank-high">상위 ${Math.round(rp*100)}%</span>`:rp<=0.7?`<span class="rank-badge rank-mid">상위 ${Math.round(rp*100)}%</span>`:`<span class="rank-badge rank-low">상위 ${Math.round(rp*100)}%</span>`) : '';
+    return `<tr class="domain-row"><td>${escHtml(d.name)}</td><td class="num">${d.total!=null?d.total:'-'}</td><td>${rb}</td></tr>${subRows}`;
+  }).join('');
+
+  const grandTotal = s.grandTotal!=null ? s.grandTotal : s.domainScores.reduce((acc,d)=>acc+(typeof d.total==='number'?d.total:0),0);
+
+  els('mainContent').innerHTML = `
+    <div class="student-nav">
+      <button class="back-btn" onclick="renderClassView(${c})">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>${selectedGrade}학년 ${c}반 목록
+      </button>
+      <div class="nav-center">
+        <button class="nav-arrow" ${hasPrev?'':'disabled'} onclick="${hasPrev?`renderStudentView(${c},'${escHtml(data.students[idx-1].num)}')`:''}">
+          <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div class="nav-info">${escHtml(s.num)}번<br><span>${idx+1} / ${total}</span></div>
+        <button class="nav-arrow" ${hasNext?'':'disabled'} onclick="${hasNext?`renderStudentView(${c},'${escHtml(data.students[idx+1].num)}')`:''}">
+          <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+      <div style="width:100px"></div>
+    </div>
+    <div class="result-header">
+      <div class="student-meta">
+        <h2>${escHtml(s.num)}번 ${escHtml(s.name)||''}</h2>
+        <div class="sub">${selectedGrade}학년 ${c}반 · 수행평가 영역 ${s.domainScores.length}개</div>
+      </div>
+      <div class="total-pill">총점 ${grandTotal%1===0?grandTotal:grandTotal.toFixed(1)}점 <span>/ 합산</span></div>
+    </div>
+    ${domainCardsHtml}
+    <div class="detail-table-wrap">
+      <div class="detail-table-title">영역별 상세 점수</div>
+      <table>
+        <thead><tr><th>영역 / 세부영역</th><th class="num">점수</th><th>반 내 순위</th></tr></thead>
+        <tbody>${tableHtml}<tr class="total-row"><td>총합</td><td class="num">${grandTotal%1===0?grandTotal:grandTotal.toFixed(1)}</td><td></td></tr></tbody>
+      </table>
+    </div>`;
+  els('mainContent').scrollTop = 0;
+}
+
+function handleSearch() { if(selectedClass) renderClassView(selectedClass); }
+function toggleGuide() {
+  els('guideHead').classList.toggle('open');
+  els('guideBody').classList.toggle('open');
+}
+function escHtml(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+document.addEventListener('keydown', e => {
+  if(!selectedClass||!currentStudentNum) return;
+  const data=allData[selectedGrade+'-'+selectedClass]; if(!data) return;
+  const idx=data.students.findIndex(st=>st.num===currentStudentNum); if(idx<0) return;
+  if(e.key==='ArrowLeft'&&idx>0) renderStudentView(selectedClass,data.students[idx-1].num);
+  if(e.key==='ArrowRight'&&idx<data.students.length-1) renderStudentView(selectedClass,data.students[idx+1].num);
+});
+
+// ── 시작 시 저장된 URL 자동 로드 ──────────────────
+(function init() {
+  const saved = loadSavedUrl();
+  if (saved) {
+    els('sheetUrlInput').value = saved;
+    els('savedBadge').classList.add('show');
+    els('clearBtn').style.display = 'block';
+    loadSheetData();
+  }
+})();
+</script>
+</body>
+</html>
