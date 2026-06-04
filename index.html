@@ -413,8 +413,9 @@ function extractSheetId(input) {
   return { error: 'invalid' };
 }
 function makeCsvUrl(id, gid) {
-  // gviz 엔드포인트는 브라우저 CORS를 허용하므로 export?format=csv 보다 안정적
-  return `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&gid=${gid}`;
+  // gviz 엔드포인트는 브라우저 CORS를 허용하므로 export?format=csv 보다 안정적.
+  // headers=0: 첫 줄(예: "2학년 1반")을 머리글로 인식해 버리지 않고 그대로 가져옴.
+  return `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&headers=0&gid=${gid}`;
 }
 async function fetchSheetList(id) {
   let res;
