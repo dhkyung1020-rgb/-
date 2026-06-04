@@ -260,7 +260,7 @@
           </div>
           <div class="guide-step">
             <div class="guide-step-num">4</div>
-            <div class="guide-step-text"><b>파일 → 공유 → 웹에 게시</b><br>CSV 형식으로 각 시트 게시 후 URL 입력</div>
+            <div class="guide-step-text"><b>공유 설정 2가지 모두</b> 켜기<br>① <b>공유 → 링크가 있는 모든 사용자 → 뷰어</b><br>② <b>파일 → 공유 → 웹에 게시</b> (전체 문서)<br><br>그 다음 주소창의 <b>일반 URL</b>(.../edit)을 붙여넣기<br>※ 게시할 때 나오는 주소가 아니라 <b>주소창 URL</b></div>
           </div>
         </div>
       </div>
@@ -404,17 +404,26 @@ function downloadTemplate() {
 // ── URL / 시트 처리 ───────────────────────────────
 function extractSheetId(input) {
   input = input.trim();
+  // "웹에 게시"용 주소(.../d/e/2PACX-..../pubhtml)는 시트 ID가 아니라 게시 ID라서
+  // CSV 데이터를 가져올 수 없음. 이 경우 일반 URL을 쓰도록 안내.
+  if (/\/spreadsheets\/d\/e\//.test(input)) return { error: 'published' };
   const m = input.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
-  if (m) return m[1];
-  if (/^[a-zA-Z0-9_-]{30,}$/.test(input)) return input;
-  return null;
+  if (m) return { id: m[1] };
+  if (/^[a-zA-Z0-9_-]{30,}$/.test(input)) return { id: input };
+  return { error: 'invalid' };
 }
 function makeCsvUrl(id, gid) {
-  return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+  // gviz 엔드포인트는 브라우저 CORS를 허용하므로 export?format=csv 보다 안정적
+  return `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&gid=${gid}`;
 }
 async function fetchSheetList(id) {
-  const res = await fetch(`https://docs.google.com/spreadsheets/d/${id}/pubhtml`);
-  if (!res.ok) throw new Error('"웹에 게시" 설정을 확인해주세요.');
+  let res;
+  try {
+    res = await fetch(`https://docs.google.com/spreadsheets/d/${id}/pubhtml`);
+  } catch (e) {
+    throw new Error('구글 시트에 연결하지 못했어요.\n· 시트가 "웹에 게시" 되어 있는지\n· 공유가 "링크가 있는 모든 사용자 - 뷰어"인지\n확인해주세요.');
+  }
+  if (!res.ok) throw new Error('시트를 찾을 수 없어요.\n· "파일 → 공유 → 웹에 게시"를 다시 확인하고\n· 게시 대상을 "전체 문서"로 설정했는지 확인해주세요.');
   const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
   const sheets = [];
   doc.querySelectorAll('#sheet-menu li').forEach(tab => {
@@ -432,13 +441,18 @@ async function loadSheetData() {
   const raw = els('sheetUrlInput').value.trim();
   if (!raw) { alert('구글 시트 URL을 입력해주세요.'); return; }
   const id = extractSheetId(raw);
-  if (!id) { alert('올바른 구글 시트 URL을 입력해주세요.'); return; }
-  sheetId = id;
+  if (id.error === 'published') {
+    setSyncStatus('error','주소 확인 필요');
+    alert('이 주소는 "웹에 게시"용 주소예요.\n\n구글 시트를 연 상태에서 브라우저 주소창에 보이는\n일반 URL(.../spreadsheets/d/...../edit)을 복사해서 붙여넣어 주세요.');
+    return;
+  }
+  if (id.error) { alert('올바른 구글 시트 URL을 입력해주세요.'); return; }
+  sheetId = id.id;
   els('loadBtn').disabled = true;
   setSyncStatus('loading','연결 중...');
   try {
-    sheetMeta = await fetchSheetList(id);
-    await fetchAllSheets(id, sheetMeta);
+    sheetMeta = await fetchSheetList(sheetId);
+    await fetchAllSheets(sheetId, sheetMeta);
     updateClassButtons();
     saveUrl(raw);
     els('savedBadge').classList.add('show');
