@@ -60,7 +60,26 @@
   .refresh-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
   .last-sync { font-size: 0.67rem; color: var(--text3); flex-shrink: 0; }
 
-  /* 양식 다운로드 버튼 */
+  /* 엑셀 업로드 영역 */
+  .upload-zone { background: var(--bg); border: 1.5px dashed var(--border); border-radius: 10px; padding: 18px 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; cursor: pointer; transition: all 0.15s; }
+  .upload-zone:hover { border-color: var(--accent); background: var(--accent-light); }
+  .upload-zone.dragover { border-color: var(--accent); background: var(--accent-light); border-style: solid; }
+  .upload-zone svg { width: 26px; height: 26px; stroke: var(--accent); fill: none; stroke-width: 1.8; }
+  .upload-zone .uz-title { font-size: 0.8rem; font-weight: 600; color: var(--text); }
+  .upload-zone .uz-sub { font-size: 0.68rem; color: var(--text3); line-height: 1.5; }
+  .file-info { display: none; background: var(--success-light); border: 1px solid #B8DEC8; border-radius: 8px; padding: 10px 12px; margin-top: 8px; }
+  .file-info.show { display: block; }
+  .file-info .fi-row { display: flex; align-items: center; gap: 7px; }
+  .file-info svg { width: 15px; height: 15px; stroke: var(--success); fill: none; stroke-width: 2; flex-shrink: 0; }
+  .file-info .fi-name { font-size: 0.74rem; font-weight: 600; color: var(--success); word-break: break-all; flex: 1; }
+  .file-info .fi-meta { font-size: 0.66rem; color: #4A9A6A; margin-top: 5px; margin-left: 22px; }
+  .file-actions { display: flex; gap: 6px; margin-top: 8px; }
+  .file-actions button { flex: 1; padding: 6px; border-radius: 7px; font-family: 'Noto Sans KR', sans-serif; font-size: 0.71rem; cursor: pointer; transition: all 0.15s; border: 1px solid var(--border); background: var(--surface); color: var(--text2); display: flex; align-items: center; justify-content: center; gap: 5px; }
+  .file-actions .reload-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .file-actions .clear-data-btn:hover { border-color: var(--danger); color: var(--danger); }
+  .file-actions svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+
   .download-btn { display: flex; align-items: center; gap: 7px; width: 100%; padding: 9px 11px; background: var(--success-light); border: 1px solid #B8DEC8; border-radius: 8px; color: var(--success); font-family: 'Noto Sans KR', sans-serif; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.15s; text-decoration: none; }
   .download-btn:hover { background: #D4EDE0; border-color: var(--success); }
   .download-btn svg { width: 15px; height: 15px; stroke: var(--success); fill: none; stroke-width: 2; flex-shrink: 0; }
@@ -181,44 +200,42 @@
     </div>
     <div>
       <h1>수행평가 점수 확인</h1>
-      <p>구글 시트 연동 · 학년·반별 영역별 점수 조회</p>
+      <p>엑셀 파일 업로드 · 학년·반별 영역별 점수 조회</p>
     </div>
   </div>
   <div class="sync-status" id="syncStatus">
     <div class="sync-dot"></div>
-    <span id="syncText">연결 안됨</span>
+    <span id="syncText">파일 없음</span>
   </div>
 </header>
 
 <div class="main">
   <aside class="sidebar">
 
-    <!-- 구글 시트 연동 -->
+    <!-- 엑셀 파일 업로드 -->
     <div>
-      <div class="section-label">구글 시트 연동</div>
-      <div class="sheet-panel">
-        <label>구글 시트 URL</label>
-        <div class="sheet-input-wrap">
-          <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-          <input class="sheet-input" type="text" id="sheetUrlInput" placeholder="구글 시트 URL 붙여넣기">
-        </div>
-        <div class="saved-badge" id="savedBadge">
+      <div class="section-label">엑셀 파일 업로드</div>
+      <div class="upload-zone" id="uploadZone">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <div class="uz-title">엑셀 파일 선택</div>
+        <div class="uz-sub">클릭하거나 파일을 끌어다 놓으세요<br>(.xlsx · .xls)</div>
+      </div>
+      <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none">
+      <div class="file-info" id="fileInfo">
+        <div class="fi-row">
           <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-          이 브라우저에 URL이 저장되어 있어요
+          <span class="fi-name" id="fileName"></span>
         </div>
-        <div class="btn-row">
-          <button class="load-btn" id="loadBtn" onclick="loadSheetData()">
-            <svg viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
-            불러오기
-          </button>
-          <button class="clear-btn" id="clearBtn" onclick="clearSavedUrl()">URL 초기화</button>
-        </div>
-        <div class="refresh-row" id="refreshRow">
-          <button class="refresh-btn" onclick="refreshData()">
+        <div class="fi-meta" id="fileMeta"></div>
+        <div class="file-actions">
+          <button class="reload-btn" onclick="els('fileInput').click()">
             <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            새로고침
+            다른 파일
           </button>
-          <span class="last-sync" id="lastSync"></span>
+          <button class="clear-data-btn" onclick="clearData()">
+            <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            초기화
+          </button>
         </div>
       </div>
     </div>
@@ -229,7 +246,7 @@
       <button class="download-btn" onclick="downloadTemplate()">
         <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         <span>
-          구글 시트 양식 다운로드
+          엑셀 양식 다운로드
           <span class="dl-sub">예시 데이터 포함 · XLSX</span>
         </span>
       </button>
@@ -238,29 +255,29 @@
 
       <div class="guide-accordion">
         <div class="guide-head" id="guideHead" onclick="toggleGuide()">
-          📋 구글 시트 설정 방법
+          📋 엑셀 파일 작성 방법
           <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div class="guide-body" id="guideBody">
           <div class="guide-step">
             <div class="guide-step-num">1</div>
-            <div class="guide-step-text">양식 다운로드 후 구글 시트에 가져오기<br><span class="guide-code">파일 → 가져오기 → 업로드</span></div>
+            <div class="guide-step-text">위 <b>엑셀 양식</b>을 다운로드해 점수를 입력하세요.</div>
           </div>
           <div class="guide-step">
             <div class="guide-step-num">2</div>
-            <div class="guide-step-text">시트 탭 이름: <span class="guide-code">1학년1반</span> <span class="guide-code">2학년3반</span> 형식<br>또는 1행에 <span class="guide-code">1학년 1반</span> 기재</div>
+            <div class="guide-step-text">반마다 <b>시트(탭)</b>를 따로 만들고 탭 이름을 <span class="guide-code">1학년1반</span> <span class="guide-code">2학년3반</span> 형식으로 지정하세요.</div>
           </div>
           <div class="guide-step">
             <div class="guide-step-num">3</div>
             <div class="guide-step-text">
               <b>2행</b>: 번호 | 이름 | <span class="guide-code">대영역명</span>(병합) | 총합<br>
               <b>3행</b>: (빈칸) | (빈칸) | <span class="guide-code">세부영역</span> | <span class="guide-code">합계</span> | ...<br>
-              <b>4행~</b>: 학생 데이터
+              <b>4행~</b>: 학생 점수
             </div>
           </div>
           <div class="guide-step">
             <div class="guide-step-num">4</div>
-            <div class="guide-step-text"><b>공유 → 링크가 있는 모든 사용자 → 뷰어</b>로 설정<br>그다음 주소창의 <b>일반 URL</b>(.../edit)을 붙여넣기<br>※ "웹에 게시"는 필요 없어요</div>
+            <div class="guide-step-text">왼쪽 <b>엑셀 파일 선택</b>에 파일을 올리면 끝!<br>※ 데이터는 이 브라우저에 저장돼 다음에 다시 열어도 유지돼요.</div>
           </div>
         </div>
       </div>
@@ -295,22 +312,22 @@
 
   <main class="content" id="mainContent">
     <div class="empty-state">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-      <h2>구글 시트를 연결해주세요</h2>
-      <p>왼쪽에 URL을 입력하고 불러오기를 누르면<br>자동 저장 후 다음부터 바로 연결돼요.</p>
-      <div class="empty-hint">💡 위의 양식을 먼저 다운로드해서<br>구글 시트에 가져온 뒤 URL을 입력해주세요</div>
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+      <h2>엑셀 파일을 업로드해주세요</h2>
+      <p>왼쪽에서 점수 엑셀 파일을 올리면<br>학년·반별 점수를 바로 확인할 수 있어요.</p>
+      <div class="empty-hint">💡 양식이 없다면 위의 <b>엑셀 양식 다운로드</b>를<br>먼저 받아 점수를 입력한 뒤 업로드하세요</div>
     </div>
   </main>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-const STORAGE_KEY = 'suhaeng_sheet_url';
+const STORAGE_KEY = 'suhaeng_data_v2';
 // allData 키: "학년-반" 예) "1-3" = 1학년 3반
 const allData = {};
 let selectedGrade = 1;
 let selectedClass = null;
 let currentStudentNum = null;
-let sheetId = null, sheetMeta = [];
 
 const XLSX_B64 = "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";
 
@@ -362,25 +379,33 @@ function updateClassButtons() {
   });
 }
 
-// ── localStorage ──────────────────────────────────
-function saveUrl(url)   { try { localStorage.setItem(STORAGE_KEY, url); } catch(e){} }
-function loadSavedUrl() { try { return localStorage.getItem(STORAGE_KEY)||''; } catch(e){ return ''; } }
+// ── localStorage (파싱된 데이터 영구 보관) ──────────
+function persistData(meta) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ data: allData, meta }));
+  } catch(e) { /* 용량 초과 등은 무시 (이번 세션에선 메모리로 유지) */ }
+}
+function loadPersisted() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch(e) { return null; }
+}
 
-function clearSavedUrl() {
+function clearData() {
   try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
-  els('sheetUrlInput').value = '';
-  els('savedBadge').classList.remove('show');
-  els('clearBtn').style.display = 'none';
-  els('refreshRow').classList.remove('show');
-  setSyncStatus('','연결 안됨');
   Object.keys(allData).forEach(k => delete allData[k]);
   selectedClass = null; currentStudentNum = null;
+  els('fileInfo').classList.remove('show');
+  els('fileInput').value = '';
+  setSyncStatus('','파일 없음');
   updateClassButtons();
   els('mainContent').innerHTML = `<div class="empty-state">
-    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-    <h2>구글 시트를 연결해주세요</h2>
-    <p>왼쪽에 URL을 입력하고 불러오기를 누르면<br>자동 저장 후 다음부터 바로 연결돼요.</p>
-    <div class="empty-hint">💡 위의 양식을 먼저 다운로드해서<br>구글 시트에 가져온 뒤 URL을 입력해주세요</div>
+    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+    <h2>엑셀 파일을 업로드해주세요</h2>
+    <p>왼쪽에서 점수 엑셀 파일을 올리면<br>학년·반별 점수를 바로 확인할 수 있어요.</p>
+    <div class="empty-hint">💡 양식이 없다면 위의 <b>엑셀 양식 다운로드</b>를<br>먼저 받아 점수를 입력한 뒤 업로드하세요</div>
   </div>`;
 }
 
@@ -397,126 +422,68 @@ function downloadTemplate() {
   const blob = new Blob([arr], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = '수행평가_구글시트_양식.xlsx';
+  a.download = '수행평가_점수_양식.xlsx';
   a.click();
 }
 
-// ── URL / 시트 처리 ───────────────────────────────
-function extractSheetId(input) {
-  input = input.trim();
-  // "웹에 게시"용 주소(.../d/e/2PACX-..../pubhtml)는 시트 ID가 아니라 게시 ID라서
-  // CSV 데이터를 가져올 수 없음. 이 경우 일반 URL을 쓰도록 안내.
-  if (/\/spreadsheets\/d\/e\//.test(input)) return { error: 'published' };
-  const m = input.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
-  if (m) return { id: m[1] };
-  if (/^[a-zA-Z0-9_-]{30,}$/.test(input)) return { id: input };
-  return { error: 'invalid' };
-}
-function makeCsvUrl(id, gid) {
-  // gviz 엔드포인트는 브라우저 CORS를 허용함. headers=0 으로 첫 줄(예: "2학년 1반")도 그대로 가져옴.
-  return `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&headers=0&gid=${gid}`;
-}
-// 시트 "이름"으로 직접 가져오기 (CORS 허용). "웹에 게시" 불필요, "링크 공유(뷰어)"만 있으면 됨.
-function makeCsvUrlByName(id, name) {
-  return `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&headers=0&sheet=${encodeURIComponent(name)}`;
-}
-// 탭 이름 후보: "N학년M반" / "N학년 M반"
-const GRADES_TO_SCAN = [1, 2, 3];
-const CLASSES_TO_SCAN = Array.from({ length: 14 }, (_, i) => i + 1);
-async function tryFetchSheet(id, name) {
-  let res;
-  try { res = await fetch(makeCsvUrlByName(id, name)); }
-  catch (e) { return false; } // CORS/네트워크 실패
-  if (!res.ok) return false;   // 없는 탭은 400 등
-  const text = await res.text();
-  if (!text || text.trim().startsWith('<')) return false; // 오류 페이지
-  parseSheet(parseCSV(text), name);
-  return true;
-}
 
-async function loadSheetData() {
-  const raw = els('sheetUrlInput').value.trim();
-  if (!raw) { alert('구글 시트 URL을 입력해주세요.'); return; }
-  const id = extractSheetId(raw);
-  if (id.error === 'published') {
-    setSyncStatus('error','주소 확인 필요');
-    alert('이 주소는 "웹에 게시"용 주소예요.\n\n구글 시트를 연 상태에서 브라우저 주소창에 보이는\n일반 URL(.../spreadsheets/d/...../edit)을 복사해서 붙여넣어 주세요.');
+// ── 엑셀 파일 읽기 ────────────────────────────────
+function handleFile(file) {
+  if (!file) return;
+  if (typeof XLSX === 'undefined') {
+    setSyncStatus('error','라이브러리 오류');
+    alert('엑셀 처리 라이브러리를 불러오지 못했어요.\n인터넷 연결을 확인한 뒤 페이지를 새로고침해주세요.');
     return;
   }
-  if (id.error) { alert('올바른 구글 시트 URL을 입력해주세요.'); return; }
-  sheetId = id.id;
-  els('loadBtn').disabled = true;
-  setSyncStatus('loading','연결 중...');
-  try {
-    await fetchAllSheets(sheetId);
-    if (Object.keys(allData).length === 0) {
-      throw new Error('시트는 열렸지만 학급 데이터를 찾지 못했어요.\n· 공유가 "링크가 있는 모든 사용자 - 뷰어"인지\n· 탭 이름이 "1학년1반" 같은 "N학년M반" 형식인지\n확인해주세요.');
+  const okExt = /\.(xlsx|xls)$/i.test(file.name);
+  if (!okExt) { alert('.xlsx 또는 .xls 엑셀 파일을 올려주세요.'); return; }
+
+  setSyncStatus('loading','읽는 중...');
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      // 기존 데이터 초기화 후 모든 시트 파싱
+      Object.keys(allData).forEach(k => delete allData[k]);
+      for (const name of wb.SheetNames) {
+        const ws = wb.Sheets[name];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', blankrows: false, raw: true });
+        parseSheet(rows, name);
+      }
+      const classCount = Object.keys(allData).length;
+      if (classCount === 0) {
+        setSyncStatus('error','학급 없음');
+        alert('학급 데이터를 찾지 못했어요.\n\n· 시트(탭) 이름이 "1학년1반" 같은 "N학년M반" 형식인지\n· 2행=영역명, 3행=세부영역, 4행부터 학생 점수인지\n확인해주세요.');
+        return;
+      }
+      const meta = { fileName: file.name, classCount, loadedAt: Date.now() };
+      persistData(meta);
+      showFileInfo(meta);
+      updateClassButtons();
+      setSyncStatus('connected', classCount + '개 학급');
+      selectedClass = null; currentStudentNum = null;
+      selectGrade(selectedGrade);
+    } catch (err) {
+      console.error(err);
+      setSyncStatus('error','읽기 실패');
+      alert('파일을 읽지 못했어요.\n\n엑셀 파일이 손상되지 않았는지 확인하고\n다시 시도해주세요.');
     }
-    updateClassButtons();
-    saveUrl(raw);
-    els('savedBadge').classList.add('show');
-    els('clearBtn').style.display = 'block';
-    els('refreshRow').classList.add('show');
-    setSyncStatus('connected','연결됨');
-    updateLastSync();
-    els('loadBtn').disabled = false;
-    selectGrade(selectedGrade);
-  } catch(e) {
-    setSyncStatus('error','연결 실패');
-    els('loadBtn').disabled = false;
-    alert('불러오기 실패\n\n' + e.message);
-  }
+  };
+  reader.onerror = () => {
+    setSyncStatus('error','읽기 실패');
+    alert('파일을 읽는 중 오류가 발생했어요. 다시 시도해주세요.');
+  };
+  reader.readAsArrayBuffer(file);
 }
 
-async function fetchAllSheets(id) {
-  Object.keys(allData).forEach(k => delete allData[k]);
-  // 1차: "N학년M반" 형식. 결과 없으면 2차: "N학년 M반" 형식.
-  const formats = [(g, c) => `${g}학년${c}반`, (g, c) => `${g}학년 ${c}반`];
-  for (const fmt of formats) {
-    const tasks = [];
-    for (const g of GRADES_TO_SCAN)
-      for (const c of CLASSES_TO_SCAN)
-        tasks.push(tryFetchSheet(id, fmt(g, c)));
-    await Promise.allSettled(tasks);
-    if (Object.keys(allData).length > 0) break;
-  }
+function showFileInfo(meta) {
+  els('fileName').textContent = meta.fileName || '저장된 데이터';
+  const d = meta.loadedAt ? new Date(meta.loadedAt) : new Date();
+  const t = `${d.getMonth()+1}월 ${d.getDate()}일 ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+  els('fileMeta').textContent = `${meta.classCount}개 학급 · ${t} 불러옴`;
+  els('fileInfo').classList.add('show');
 }
 
-async function refreshData() {
-  if (!sheetId) return;
-  setSyncStatus('loading','새로고침 중...');
-  try {
-    await fetchAllSheets(sheetId);
-    updateClassButtons();
-    setSyncStatus('connected','연결됨');
-    updateLastSync();
-    if (selectedClass && allData[selectedGrade+'-'+selectedClass])
-      currentStudentNum ? renderStudentView(selectedClass, currentStudentNum) : renderClassView(selectedClass);
-  } catch(e) { setSyncStatus('error','새로고침 실패'); }
-}
-
-function updateLastSync() {
-  const n = new Date();
-  els('lastSync').textContent = `${n.getHours().toString().padStart(2,'0')}:${n.getMinutes().toString().padStart(2,'0')} 업데이트`;
-}
-
-// ── CSV 파싱 ─────────────────────────────────────
-function parseCSV(text) {
-  const rows = [];
-  for (const line of text.split('\n')) {
-    if (!line.trim()) continue;
-    const cols = []; let cur='', inQ=false;
-    for (let i=0; i<line.length; i++) {
-      const ch = line[i];
-      if (ch==='"') inQ=!inQ;
-      else if (ch===','&&!inQ) { cols.push(cur.trim()); cur=''; }
-      else cur+=ch;
-    }
-    cols.push(cur.trim());
-    rows.push(cols);
-  }
-  return rows;
-}
 
 // ── 학년/반 감지 ──────────────────────────────────
 // 시트 이름이나 1행에서 "N학년 M반" 또는 "NM반" 형태 인식
@@ -582,10 +549,25 @@ function parseSheet(raw, sheetName) {
         return { ...col, value: isNaN(n) ? (v||'-') : n };
       });
       const totalCol = cols.find(c=>c.isTotal);
-      const total = totalCol ? (typeof totalCol.value==='number' ? totalCol.value : null) : null;
+      let total = totalCol && typeof totalCol.value==='number' ? totalCol.value : null;
+      // 합계가 비어 있으면 세부 점수를 자동 합산
+      if (total == null) {
+        const subSum = cols.filter(c=>!c.isTotal && typeof c.value==='number')
+                           .reduce((a,c)=>a+c.value, 0);
+        const hasNum = cols.some(c=>!c.isTotal && typeof c.value==='number');
+        if (hasNum) {
+          total = subSum;
+          if (totalCol) totalCol.value = subSum; // 표/카드에도 채워서 표시
+        }
+      }
       return { name: d.name, cols, total };
     });
-    const gv = totalIdx>=0 ? parseFloat(row[totalIdx]) : null;
+    let gv = totalIdx>=0 ? parseFloat(row[totalIdx]) : NaN;
+    // 총합이 비어 있으면 영역 합계를 자동 합산
+    if (isNaN(gv)) {
+      const dSum = domainScores.reduce((a,d)=>a+(typeof d.total==='number'?d.total:0), 0);
+      gv = domainScores.some(d=>typeof d.total==='number') ? dSum : NaN;
+    }
     students.push({ num, name, domainScores, grandTotal: isNaN(gv)?null:gv });
   }
   if (students.length > 0) allData[grade+'-'+cls] = { students, domains, grade, cls };
@@ -606,7 +588,7 @@ function renderClassView(c) {
   const key = selectedGrade+'-'+c;
   const data = allData[key];
   if (!data) {
-    els('mainContent').innerHTML = `<div class="no-data"><p>${selectedGrade}학년 ${c}반 데이터가 없습니다.<br>구글 시트를 확인해주세요.</p></div>`;
+    els('mainContent').innerHTML = `<div class="no-data"><p>${selectedGrade}학년 ${c}반 데이터가 없습니다.<br>업로드한 엑셀 파일에 해당 반 시트가 있는지 확인해주세요.</p></div>`;
     return;
   }
   const q = els('searchInput').value.trim().toLowerCase();
@@ -732,14 +714,36 @@ document.addEventListener('keydown', e => {
   if(e.key==='ArrowRight'&&idx<data.students.length-1) renderStudentView(selectedClass,data.students[idx+1].num);
 });
 
-// ── 시작 시 저장된 URL 자동 로드 ──────────────────
+// ── 파일 입력 / 드래그앤드롭 연결 ──────────────────
+els('fileInput').addEventListener('change', e => {
+  const f = e.target.files && e.target.files[0];
+  if (f) handleFile(f);
+});
+els('uploadZone').addEventListener('click', () => els('fileInput').click());
+['dragenter','dragover'].forEach(ev =>
+  els('uploadZone').addEventListener(ev, e => { e.preventDefault(); els('uploadZone').classList.add('dragover'); }));
+['dragleave','drop'].forEach(ev =>
+  els('uploadZone').addEventListener(ev, e => { e.preventDefault(); els('uploadZone').classList.remove('dragover'); }));
+els('uploadZone').addEventListener('drop', e => {
+  const f = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+// 페이지 전체에 파일을 떨어뜨려도 무시되지 않도록 기본 동작 방지
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => e.preventDefault());
+
+// ── 시작 시 저장된 데이터 자동 복원 ────────────────
 (function init() {
-  const saved = loadSavedUrl();
-  if (saved) {
-    els('sheetUrlInput').value = saved;
-    els('savedBadge').classList.add('show');
-    els('clearBtn').style.display = 'block';
-    loadSheetData();
+  const saved = loadPersisted();
+  if (saved && saved.data && Object.keys(saved.data).length) {
+    Object.keys(saved.data).forEach(k => { allData[k] = saved.data[k]; });
+    showFileInfo(saved.meta || { classCount: Object.keys(saved.data).length });
+    setSyncStatus('connected', Object.keys(allData).length + '개 학급');
+    updateClassButtons();
+    selectGrade(selectedGrade);
+  } else {
+    updateClassButtons();
+    // 데이터가 없으면 업로드 안내 화면(기본 상태) 유지
   }
 })();
 </script>
