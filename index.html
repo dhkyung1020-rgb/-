@@ -14,6 +14,7 @@
     --success: #2D7A4F; --success-light: #E8F4EE;
     --warn: #8B5E00; --warn-light: #FFF3DC;
     --danger: #A32D2D; --danger-light: #FCEBEB;
+    --total: #B45309; --total-bg: #FBEAD7; --total-border: #EBC79A;
   }
   body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
 
@@ -149,6 +150,21 @@
   .result-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.25rem; gap: 1rem; flex-wrap: wrap; }
   .student-meta h2 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.03em; }
   .student-meta .sub { font-size: 0.8rem; color: var(--text2); margin-top: 3px; }
+
+  /* 영역 한눈에 보기 그리드 (한 화면에 전체 영역) */
+  .overview-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em; color: var(--text3); text-transform: uppercase; margin-bottom: 0.6rem; }
+  .domain-overview { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+  .dov-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 9px; }
+  .dov-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .dov-name { font-size: 0.92rem; font-weight: 700; color: var(--text); line-height: 1.3; }
+  .dov-total { font-size: 1.75rem; font-weight: 800; color: var(--total); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; white-space: nowrap; display: flex; align-items: baseline; gap: 2px; }
+  .dov-total small { font-size: 0.72rem; font-weight: 600; opacity: 0.75; }
+  .dov-bar { height: 5px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .dov-bar-fill { height: 100%; background: var(--total); border-radius: 3px; }
+  .dov-subs { display: flex; flex-wrap: wrap; gap: 5px; }
+  .dov-sub { font-size: 0.68rem; color: var(--text2); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; }
+  .dov-sub b { color: var(--text); font-weight: 700; margin-left: 2px; }
+
   .total-pill { background: var(--accent); color: white; padding: 6px 18px; border-radius: 999px; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
   .total-pill span { opacity: 0.75; font-weight: 400; font-size: 0.74rem; }
 
@@ -618,34 +634,25 @@ function renderStudentView(c, num) {
   const total = data.students.length;
   const hasPrev = idx>0, hasNext = idx<total-1;
 
-  const domainCardsHtml = s.domainScores.map(d => {
-    const maxTotal = Math.max(...data.students.map(st=>{
+  const domainOverviewHtml = s.domainScores.map(d => {
+    const maxTotal = Math.max(0, ...data.students.map(st=>{
       const dd=st.domainScores.find(x=>x.name===d.name);
       return dd&&typeof dd.total==='number'?dd.total:0;
     }));
     const pct = d.total!=null&&maxTotal>0 ? Math.round((d.total/maxTotal)*100) : 0;
-    const subHtml = d.cols.filter(c=>!c.isTotal).map(col=>{
+    const subChips = d.cols.filter(c=>!c.isTotal).map(col=>{
       const v=col.value, isNum=typeof v==='number';
-      const colMax = isNum ? Math.max(...data.students.map(st=>{
-        const dd=st.domainScores.find(x=>x.name===d.name);
-        if(!dd) return 0;
-        const cc=dd.cols.find(x=>x.subName===col.subName);
-        return cc&&typeof cc.value==='number'?cc.value:0;
-      })) : 0;
-      const colPct = isNum&&colMax>0 ? Math.round((v/colMax)*100) : 0;
-      return `<div class="sub-domain-item">
-        <div class="sub-domain-name">${escHtml(col.subName)}</div>
-        <div class="sub-domain-score">${isNum?v:(v||'-')}</div>
-        ${isNum?`<div class="sub-domain-max">최고 ${colMax}점</div><div class="sub-domain-bar"><div class="sub-domain-bar-fill" style="width:${colPct}%"></div></div>`:''}
-      </div>`;
+      const nm = escHtml(String(col.subName).replace(/\s*\n\s*/g,' '));
+      return `<span class="dov-sub">${nm}<b>${isNum?v:escHtml(v||'-')}</b></span>`;
     }).join('');
-    return `<div class="domain-section">
-      <div class="domain-section-header">
-        <div class="domain-section-title">${escHtml(d.name)}</div>
-        <div class="domain-section-total">${d.total!=null?d.total:'-'}<span class="max">/ 합계</span></div>
+    const totalDisp = d.total!=null ? (d.total%1===0?d.total:d.total.toFixed(1)) : '-';
+    return `<div class="dov-card">
+      <div class="dov-head">
+        <div class="dov-name">${escHtml(d.name)}</div>
+        <div class="dov-total">${totalDisp}<small>점</small></div>
       </div>
-      <div class="domain-section-bar"><div class="domain-section-bar-fill" style="width:${pct}%"></div></div>
-      <div class="sub-domains">${subHtml}</div>
+      <div class="dov-bar"><div class="dov-bar-fill" style="width:${pct}%"></div></div>
+      <div class="dov-subs">${subChips}</div>
     </div>`;
   }).join('');
 
@@ -686,7 +693,8 @@ function renderStudentView(c, num) {
       </div>
       <div class="total-pill">총점 ${grandTotal%1===0?grandTotal:grandTotal.toFixed(1)}점 <span>/ 합산</span></div>
     </div>
-    ${domainCardsHtml}
+    <div class="overview-label">영역별 합계 (한눈에 보기)</div>
+    <div class="domain-overview">${domainOverviewHtml}</div>
     <div class="detail-table-wrap">
       <div class="detail-table-title">영역별 상세 점수</div>
       <table>
