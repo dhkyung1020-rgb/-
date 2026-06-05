@@ -161,9 +161,10 @@
   .dov-total small { font-size: 0.72rem; font-weight: 600; opacity: 0.75; }
   .dov-bar { height: 5px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
   .dov-bar-fill { height: 100%; background: var(--total); border-radius: 3px; }
-  .dov-subs { display: flex; flex-wrap: wrap; gap: 5px; }
-  .dov-sub { font-size: 0.68rem; color: var(--text2); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; }
-  .dov-sub b { color: var(--text); font-weight: 700; margin-left: 2px; }
+  .dov-subs { display: flex; flex-direction: column; gap: 6px; }
+  .dov-sub { display: flex; align-items: center; gap: 14px; font-size: 0.76rem; color: var(--text2); background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 6px 12px; }
+  .dov-sub-name { flex: 1; min-width: 0; }
+  .dov-sub b { color: var(--text); font-weight: 700; font-size: 0.84rem; white-space: nowrap; }
 
   .total-pill { background: var(--accent); color: white; padding: 6px 18px; border-radius: 999px; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
   .total-pill span { opacity: 0.75; font-weight: 400; font-size: 0.74rem; }
@@ -643,7 +644,7 @@ function renderStudentView(c, num) {
     const subChips = d.cols.filter(c=>!c.isTotal).map(col=>{
       const v=col.value, isNum=typeof v==='number';
       const nm = escHtml(String(col.subName).replace(/\s*\n\s*/g,' '));
-      return `<span class="dov-sub">${nm}<b>${isNum?v:escHtml(v||'-')}</b></span>`;
+      return `<span class="dov-sub"><span class="dov-sub-name">${nm}</span><b>${isNum?v:escHtml(v||'-')}</b></span>`;
     }).join('');
     const totalDisp = d.total!=null ? (d.total%1===0?d.total:d.total.toFixed(1)) : '-';
     return `<div class="dov-card">
