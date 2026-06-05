@@ -260,7 +260,7 @@
           </div>
           <div class="guide-step">
             <div class="guide-step-num">4</div>
-            <div class="guide-step-text"><b>공유 설정 2가지 모두</b> 켜기<br>① <b>공유 → 링크가 있는 모든 사용자 → 뷰어</b><br>② <b>파일 → 공유 → 웹에 게시</b> (전체 문서)<br><br>그 다음 주소창의 <b>일반 URL</b>(.../edit)을 붙여넣기<br>※ 게시할 때 나오는 주소가 아니라 <b>주소창 URL</b></div>
+            <div class="guide-step-text"><b>공유 → 링크가 있는 모든 사용자 → 뷰어</b>로 설정<br>그다음 주소창의 <b>일반 URL</b>(.../edit)을 붙여넣기<br>※ "웹에 게시"는 필요 없어요</div>
           </div>
         </div>
       </div>
@@ -413,29 +413,25 @@ function extractSheetId(input) {
   return { error: 'invalid' };
 }
 function makeCsvUrl(id, gid) {
-  // gviz 엔드포인트는 브라우저 CORS를 허용하므로 export?format=csv 보다 안정적.
-  // headers=0: 첫 줄(예: "2학년 1반")을 머리글로 인식해 버리지 않고 그대로 가져옴.
+  // gviz 엔드포인트는 브라우저 CORS를 허용함. headers=0 으로 첫 줄(예: "2학년 1반")도 그대로 가져옴.
   return `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&headers=0&gid=${gid}`;
 }
-async function fetchSheetList(id) {
+// 시트 "이름"으로 직접 가져오기 (CORS 허용). "웹에 게시" 불필요, "링크 공유(뷰어)"만 있으면 됨.
+function makeCsvUrlByName(id, name) {
+  return `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&headers=0&sheet=${encodeURIComponent(name)}`;
+}
+// 탭 이름 후보: "N학년M반" / "N학년 M반"
+const GRADES_TO_SCAN = [1, 2, 3];
+const CLASSES_TO_SCAN = Array.from({ length: 14 }, (_, i) => i + 1);
+async function tryFetchSheet(id, name) {
   let res;
-  try {
-    res = await fetch(`https://docs.google.com/spreadsheets/d/${id}/pubhtml`);
-  } catch (e) {
-    throw new Error('구글 시트에 연결하지 못했어요.\n· 시트가 "웹에 게시" 되어 있는지\n· 공유가 "링크가 있는 모든 사용자 - 뷰어"인지\n확인해주세요.');
-  }
-  if (!res.ok) throw new Error('시트를 찾을 수 없어요.\n· "파일 → 공유 → 웹에 게시"를 다시 확인하고\n· 게시 대상을 "전체 문서"로 설정했는지 확인해주세요.');
-  const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
-  const sheets = [];
-  doc.querySelectorAll('#sheet-menu li').forEach(tab => {
-    const a = tab.querySelector('a');
-    if (a) {
-      const gidM = (a.getAttribute('href')||'').match(/gid=(\d+)/);
-      sheets.push({ name: a.textContent.trim(), gid: gidM ? gidM[1] : '0' });
-    }
-  });
-  if (!sheets.length) sheets.push({ name:'Sheet1', gid:'0' });
-  return sheets;
+  try { res = await fetch(makeCsvUrlByName(id, name)); }
+  catch (e) { return false; } // CORS/네트워크 실패
+  if (!res.ok) return false;   // 없는 탭은 400 등
+  const text = await res.text();
+  if (!text || text.trim().startsWith('<')) return false; // 오류 페이지
+  parseSheet(parseCSV(text), name);
+  return true;
 }
 
 async function loadSheetData() {
@@ -452,8 +448,10 @@ async function loadSheetData() {
   els('loadBtn').disabled = true;
   setSyncStatus('loading','연결 중...');
   try {
-    sheetMeta = await fetchSheetList(sheetId);
-    await fetchAllSheets(sheetId, sheetMeta);
+    await fetchAllSheets(sheetId);
+    if (Object.keys(allData).length === 0) {
+      throw new Error('시트는 열렸지만 학급 데이터를 찾지 못했어요.\n· 공유가 "링크가 있는 모든 사용자 - 뷰어"인지\n· 탭 이름이 "1학년1반" 같은 "N학년M반" 형식인지\n확인해주세요.');
+    }
     updateClassButtons();
     saveUrl(raw);
     els('savedBadge').classList.add('show');
@@ -470,22 +468,25 @@ async function loadSheetData() {
   }
 }
 
-async function fetchAllSheets(id, sheets) {
+async function fetchAllSheets(id) {
   Object.keys(allData).forEach(k => delete allData[k]);
-  for (const sheet of sheets) {
-    try {
-      const res = await fetch(makeCsvUrl(id, sheet.gid));
-      if (!res.ok) continue;
-      parseSheet(parseCSV(await res.text()), sheet.name);
-    } catch(e) {}
+  // 1차: "N학년M반" 형식. 결과 없으면 2차: "N학년 M반" 형식.
+  const formats = [(g, c) => `${g}학년${c}반`, (g, c) => `${g}학년 ${c}반`];
+  for (const fmt of formats) {
+    const tasks = [];
+    for (const g of GRADES_TO_SCAN)
+      for (const c of CLASSES_TO_SCAN)
+        tasks.push(tryFetchSheet(id, fmt(g, c)));
+    await Promise.allSettled(tasks);
+    if (Object.keys(allData).length > 0) break;
   }
 }
 
 async function refreshData() {
-  if (!sheetId || !sheetMeta.length) return;
+  if (!sheetId) return;
   setSyncStatus('loading','새로고침 중...');
   try {
-    await fetchAllSheets(sheetId, sheetMeta);
+    await fetchAllSheets(sheetId);
     updateClassButtons();
     setSyncStatus('connected','연결됨');
     updateLastSync();
